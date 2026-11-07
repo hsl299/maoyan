@@ -9,8 +9,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import db
 
 auth_bp = Blueprint('auth', __name__)
-
-
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -30,7 +28,6 @@ def login():
             return redirect(nxt)
         flash('用户名或密码错误', 'danger')
     return render_template('login.html')
-
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -60,7 +57,6 @@ def register():
             flash('注册成功，请登录', 'success')
             return redirect(url_for('auth.login'))
     return render_template('register.html')
-
 
 @auth_bp.route('/logout')
 def logout():
