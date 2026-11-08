@@ -1,0 +1,44 @@
+{% extends 'merchant/base.html' %}
+{% block mcontent %}
+<div class="page-title"><span>票券核销</span></div>
+
+<div class="order-detail" style="max-width:560px;text-align:center;">
+  <div style="font-size:14px;color:#666;margin-bottom:16px;">线下检票时，输入用户电子票上的 <b>核销码</b> 完成核销。一个订单共用一个核销码，一次核销本订单全部座位。</div>
+  <input type="text" id="verifyCode" placeholder="输入 16 位核销码" style="width:100%;padding:14px;border:2px solid #ddd;border-radius:10px;font-size:20px;letter-spacing:3px;text-align:center;outline:none;text-transform:uppercase;" autofocus>
+  <button class="btn block" id="btnVerify" style="margin-top:16px;padding:14px;font-size:16px;">核 销</button>
+  <div id="result" style="margin-top:18px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('btnVerify').addEventListener('click', doVerify);
+  document.getElementById('verifyCode').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') doVerify();
+  });
+  function doVerify() {
+    var code = document.getElementById('verifyCode').value.trim();
+    var res = document.getElementById('result');
+    if (!code) { res.innerHTML = '<div class="flash danger">请输入核销码</div>'; return; }
+    var btn = document.getElementById('btnVerify');
+    btn.disabled = true; btn.textContent = '核销中...';
+    var fd = new FormData(); fd.append('code', code);
+    fetch(window.API_BASE + '/merchant/verify/api', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.success) {
+          res.innerHTML = '<div class="flash success"><b>核销成功！</b><br>票品：' + data.detail.title +
+            '<br>座位（共' + data.detail.count + '张）：' + data.detail.seats +
+            '<br>场次：' + data.detail.show_time + '</div>';
+          document.getElementById('verifyCode').value = '';
+        } else {
+          var extra = (data.detail && data.detail.verified_at) ? '<br>核销时间：' + data.detail.verified_at : '';
+          res.innerHTML = '<div class="flash danger">' + data.msg + extra + '</div>';
+        }
+        btn.disabled = false; btn.textContent = '核 销';
+        document.getElementById('verifyCode').focus();
+      })
+      .catch(function () { res.innerHTML = '<div class="flash danger">网络错误</div>'; btn.disabled = false; btn.textContent = '核 销'; });
+  }
+</script>
+{% endblock %}
