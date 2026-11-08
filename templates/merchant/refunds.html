@@ -1,0 +1,44 @@
+{% extends 'merchant/base.html' %}
+{% block mcontent %}
+<div class="page-title"><span>退票审核</span></div>
+
+{% if refunds %}
+<table class="table">
+  <thead><tr><th>订单号</th><th>票品</th><th>用户</th><th>金额</th><th>退票原因</th><th>状态</th><th style="width:260px;">操作</th></tr></thead>
+  <tbody>
+    {% for r in refunds %}
+    <tr>
+      <td>{{ r.order_no }}</td>
+      <td>{{ r.title }}</td>
+      <td>{{ r.nickname }}<div style="color:#999;font-size:12px;">{{ r.phone }}</div></td>
+      <td>￥{{ '%.2f'|format(r.total_price) }}</td>
+      <td style="max-width:200px;">{{ r.reason or '-' }}</td>
+      <td>
+        <span class="st-badge {{ 'st-5' if r.status==0 else ('st-1' if r.status==1 else 'st-4') }}">
+          {{ {0:'待审核',1:'已通过',2:'未通过'}[r.status] }}
+        </span>
+      </td>
+      <td>
+        {% if r.status == 0 %}
+        <form method="post" action="{{ url_for('merchant.refund_handle', rid=r.id) }}" style="display:flex;gap:6px;align-items:center;">
+          <input type="hidden" name="action" value="approve">
+          <input type="text" name="reply" placeholder="审核意见(选填)" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;width:120px;">
+          <button class="btn green" style="padding:6px 12px;font-size:12px;" type="submit">通过退款</button>
+        </form>
+        <form method="post" action="{{ url_for('merchant.refund_handle', rid=r.id) }}" style="display:flex;gap:6px;margin-top:6px;align-items:center;">
+          <input type="hidden" name="action" value="reject">
+          <input type="text" name="reply" placeholder="驳回原因(选填)" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;width:120px;">
+          <button class="btn gray" style="padding:6px 12px;font-size:12px;" type="submit">驳回</button>
+        </form>
+        {% else %}
+        <span style="color:#999;font-size:12px;">{{ r.reply or '-' }}</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">暂无退票申请</div>
+{% endif %}
+{% endblock %}
