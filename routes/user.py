@@ -254,6 +254,41 @@ def electronic_ticket(order_id):
     return render_template('electronic_ticket.html', order=detail)
 
 # ----------------------------------------------------------------------
+# 申请退票（GET 表单 / POST 提交）
+# ----------------------------------------------------------------------
+@user_bp.route('/order/<int:order_id>/refund', methods=['GET', 'POST'])
+@login_required
+def refund_apply(order_id):
+    order = _get_own_order(order_id)
+    if not order:
+        flash('订单不存在', 'danger')
+        return redirect(url_for('user.my_orders'))
+    if order['status'] != 1:
+        flash('只有已支付订单才能申请退票', 'warning')
+        return redirect(url_for('user.order_detail', order_id=order_id))
+    # 已有未处理退票申请
+    exist = db.query_one(
+        "SELECT id FROM refunds WHERE order_id=%s AND status IN (0,1)", (order_id,))
+    if exist:
+        flash('该订单已提交过退票申请，请等待审核', 'warning')
+        return redirect(url_for('user.order_detail', order_id=order_id))
+
+    if request.method == 'POST':
+        reason = request.form.get('reason', '').strip()
+        if not reason:
+            flash('请填写退票原因', 'danger')
+            return render_template('refund_apply.html', order=_order_detail(order_id), reason='')
+        db.execute(
+            'INSERT INTO refunds (order_id, user_id, reason) VALUES (%s,%s,%s)',
+            (order_id, session['user_id'], reason))
+        db.execute('UPDATE orders SET status=5 WHERE id=%s', (order_id,))
+        db.commit()
+        flash('退票申请已提交，等待商家审核', 'success')
+        return redirect(url_for('user.my_orders'))
+    return render_template('refund_apply.html', order=_order_detail(order_id))
+
+
+# ----------------------------------------------------------------------
 # 私有工具
 # ----------------------------------------------------------------------
 def _get_own_order(order_id):
