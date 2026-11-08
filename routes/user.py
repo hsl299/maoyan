@@ -242,7 +242,18 @@ def order_detail(order_id):
         return redirect(url_for('user.my_orders'))
     return render_template('order_detail.html', order=_order_detail(order_id))
 
-
+# ----------------------------------------------------------------------
+# 电子票券页（含核销码 / 二维码）
+# ----------------------------------------------------------------------
+@user_bp.route('/order/<int:order_id>/ticket')
+@login_required
+def electronic_ticket(order_id):
+    order = _get_own_order(order_id)
+    if not order or order['status'] not in (1, 2, 6):
+        flash('订单未支付，无法查看电子票', 'warning')
+        return redirect(url_for('user.my_orders'))
+    detail = _order_detail(order_id)
+    return render_template('electronic_ticket.html', order=detail)
 
 
 
