@@ -253,6 +253,33 @@ def electronic_ticket(order_id):
     detail = _order_detail(order_id)
     return render_template('electronic_ticket.html', order=detail)
 
+# ----------------------------------------------------------------------
+# 私有工具
+# ----------------------------------------------------------------------
+def _get_own_order(order_id):
+    return db.query_one(
+        'SELECT * FROM orders WHERE id=%s AND user_id=%s',
+        (order_id, session['user_id']))
+
+
+def _order_detail(order_id):
+    """聚合订单的完整展示信息"""
+    order = db.query_one(
+        'SELECT o.*, t.title, t.type, t.cover, t.address, t.actors, '
+        's.show_time, s.ticket_id, s.seat_rows, s.seat_cols '
+        'FROM orders o JOIN sessions s ON o.session_id=s.id '
+        'JOIN tickets t ON s.ticket_id=t.id WHERE o.id=%s', (order_id,))
+    if not order:
+        return None
+    order['seats'] = db.query(
+        'SELECT os.seat_id, st.seat_row, st.seat_col, st.price '
+        'FROM order_seats os JOIN seats st ON os.seat_id=st.id '
+        'WHERE os.order_id=%s ORDER BY st.seat_row, st.seat_col', (order_id,))
+    order['tickets_issued'] = db.query(
+        'SELECT * FROM e_tickets WHERE order_id=%s', (order_id,))
+    order['refund'] = db.query_one(
+        'SELECT * FROM refunds WHERE order_id=%s', (order_id,))
+    return order
 
 
 
