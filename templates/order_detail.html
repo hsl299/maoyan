@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}订单详情 - 仿猫眼票务{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-title">
+    <span>订单详情</span>
+    <a class="btn gray" href="{{ url_for('user.my_orders') }}">返回订单列表</a>
+  </div>
+  <div class="order-detail">
+    <h3 style="margin-bottom:6px;">{{ order.title }}</h3>
+    <div style="margin-bottom:14px;">
+      <span class="st-badge st-{{ order.status }}">
+        {{ {0:'待支付',1:'已支付',2:'已完成',3:'已退票',4:'已取消',5:'退票审核中',6:'已核销'}[order.status] }}
+      </span>
+      {% if order.refund %}
+        <span style="margin-left:10px;font-size:13px;color:#888;">
+          退票申请：{{ {0:'待审核',1:'已通过',2:'未通过'}[order.refund.status] }}
+          {% if order.refund.reply %}（{{ order.refund.reply }}）{% endif %}
+        </span>
+      {% endif %}
+    </div>
+
+    <div class="info-grid">
+      <div class="g"><b>订单号</b>{{ order.order_no }}</div>
+      <div class="g"><b>票品</b>{{ order.title }}</div>
+      <div class="g"><b>场次</b>{{ order.show_time.strftime('%Y-%m-%d %H:%M') }}</div>
+      <div class="g"><b>地点</b>{{ order.address }}</div>
+      <div class="g"><b>座位</b>
+        {% for s in order.seats %}{{ s.seat_row }}{{ s.seat_col }} {% endfor %}
+      </div>
+      <div class="g"><b>金额</b>￥{{ '%.2f'|format(order.total_price) }}</div>
+      <div class="g"><b>下单时间</b>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+      <div class="g"><b>支付时间</b>{{ order.paid_at.strftime('%Y-%m-%d %H:%M') if order.paid_at else '未支付' }}</div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:24px;">
+      {% if order.status == 0 %}
+        <a class="btn green" href="{{ url_for('user.order_confirm', order_id=order.id) }}">去支付</a>
+      {% endif %}
+      {% if order.status == 1 %}
+        <a class="btn" href="{{ url_for('user.electronic_ticket', order_id=order.id) }}">查看电子票</a>
+        <a class="btn outline" href="{{ url_for('user.refund_apply', order_id=order.id) }}">申请退票</a>
+      {% endif %}
+      {% if order.status == 2 %}
+        <a class="btn" href="{{ url_for('user.electronic_ticket', order_id=order.id) }}">查看电子票</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
