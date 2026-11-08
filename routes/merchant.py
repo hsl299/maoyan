@@ -384,3 +384,66 @@ def refund_handle(rid):
         db.rollback()
         flash('处理失败', 'danger')
     return redirect(url_for('merchant.refunds'))
+
+# ----------------------------------------------------------------------
+# 电子票核销
+# ----------------------------------------------------------------------
+@merchant_bp.route('/verify')
+@merchant_required
+def verify():
+    return render_template('merchant/verify.html')
+
+
+@merchant_bp.route('/verify/api', methods=['POST'])
+@merchant_required
+def verify_api():
+    code = request.form.get('code', '').strip().upper()
+    if not code:
+        return jsonify(success=False, msg='请输入核销码')
+
+    # 订单级核销码查询订单
+    order = db.query_one('SELECT * FROM orders WHERE verify_code=%s', (code,))
+    if not order:
+        return jsonify(success=False, msg='核销码不存在')
+
+    # 关联票品信息 + 校验商家归属
+    info = db.query_one(
+        'SELECT t.title, t.merchant_id, s.show_time FROM orders o '
+        'JOIN sessions s ON o.session_id=s.id JOIN tickets t ON s.ticket_id=t.id '
+        'WHERE o.id=%s', (order['id'],))
+    if not info or info['merchant_id'] != session['user_id']:
+        return jsonify(success=False, msg='该订单不属于本商家')
+
+    # 状态校验：只允许"已支付"订单核销；已核销订单禁止重复核销
+    if order['status'] == 6:
+        return jsonify(success=False, msg='该订单已核销过，不能重复核销',
+                       detail={'title': info['title'],
+                               'verified_at': str(order['verify_time']) if order['verify_time'] else ''})
+    if order['status'] != 1:
+        return jsonify(success=False, msg=f"该订单当前状态（{STATUS_MAP.get(order['status'], '未知')}）无法核销")
+
+    # 订单下所有座位
+    seats = db.query(
+        'SELECT st.seat_row, st.seat_col FROM order_seats os '
+        'JOIN seats st ON os.seat_id=st.id WHERE os.order_id=%s '
+        'ORDER BY st.seat_row, st.seat_col', (order['id'],))
+
+    # 整单核销：本订单所有票券全部标记已核销，订单状态改为"已核销"
+    db.execute('UPDATE e_tickets SET status=1, verified_at=NOW() WHERE order_id=%s AND status=0',
+               (order['id'],))
+    db.execute('UPDATE orders SET status=6, verify_time=NOW() WHERE id=%s', (order['id'],))
+    db.commit()
+
+    seat_text = ' '.join(f"{s['seat_row']}{s['seat_col']}" for s in seats)
+    return jsonify(success=True, msg='核销成功！本订单全部座位已核销',
+                   detail={'title': info['title'], 'seats': seat_text or '-',
+                           'count': len(seats), 'show_time': str(info['show_time'])})
+
+
+# ----------------------------------------------------------------------
+# 私有工具
+# ----------------------------------------------------------------------
+def _get_own_ticket(tid):
+    return db.query_one(
+        'SELECT * FROM tickets WHERE id=%s AND merchant_id=%s',
+        (tid, session['user_id']))
