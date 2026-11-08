@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}选座 - {{ ticket.title }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-title">
+    <span>选座 · {{ ticket.title }}</span>
+    <a class="btn gray" href="{{ url_for('user.ticket_detail', ticket_id=ticket.id) }}">返回场次</a>
+  </div>
+
+  <div class="seat-page">
+    <div class="seat-main">
+      <div class="screen">银 幕 / 舞 台</div>
+      <div class="seat-grid">
+        {% for letter, row_seats in seats|groupby('seat_row') %}
+        <div class="seat-row">
+          <span class="row-label">{{ letter }}</span>
+          {% for seat in row_seats|sort(attribute='seat_col') %}
+          <div class="seat {{ 'sold' if seat.status==2 else ('locked' if seat.status==1 else '') }}"
+               data-id="{{ seat.id }}" data-price="{{ '%.0f'|format(seat.price) }}"
+               data-seat="{{ letter }}{{ seat.seat_col }}">
+            {% if seat.status != 0 %}{{ seat.seat_col }}{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="legend-bar">
+        <div class="lg"><span class="dot" style="background:#dfe4ea"></span>可选</div>
+        <div class="lg"><span class="dot" style="background:#f03d37"></span>已选</div>
+        <div class="lg"><span class="dot" style="background:#f5d04e"></span>锁定中</div>
+        <div class="lg"><span class="dot" style="background:#cfcfcf"></span>已售</div>
+      </div>
+    </div>
+
+    <div class="seat-side">
+      <h3>{{ sess.show_time.strftime('%m月%d日 %H:%M') }}</h3>
+      <div class="selected-list" id="selList">
+        <div class="sl" style="color:#aaa;border:none;justify-content:center;">请选择座位</div>
+      </div>
+      <div class="total-bar">
+        <div class="t"><span>共 <b id="count">0</b> 张</span><span>合计：<b id="total">￥0</b></span></div>
+        <button class="btn block" id="btnConfirm" disabled>确认选座</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.SESSION_ID = {{ sess.id }};
+</script>
+<script src="{{ url_for('static', filename='js/seat.js') }}"></script>
+{% endblock %}
