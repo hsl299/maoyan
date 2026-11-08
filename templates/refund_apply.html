@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}申请退票 - 仿猫眼票务{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="auth-wrap" style="max-width:520px;">
+    <div class="auth-box">
+      <h2>申请退票</h2>
+      <div style="background:#f8f8f8;border-radius:8px;padding:14px;margin-bottom:20px;font-size:14px;">
+        <div><b>{{ order.title }}</b></div>
+        <div style="color:#888;margin-top:6px;">{{ order.show_time.strftime('%Y-%m-%d %H:%M') }} ·
+          {% for s in order.seats %}{{ s.seat_row }}{{ s.seat_col }} {% endfor %}</div>
+        <div style="color:var(--main);font-weight:700;margin-top:6px;">退款金额：￥{{ '%.2f'|format(order.total_price) }}</div>
+      </div>
+      <form method="post">
+        <div class="field">
+          <label>退票原因</label>
+          <textarea name="reason" placeholder="请填写退票原因，提交后等待商家审核…" required>{{ reason or '' }}</textarea>
+        </div>
+        <button class="btn block" type="submit">提交退票申请</button>
+      </form>
+      <div class="auth-link"><a href="{{ url_for('user.order_detail', order_id=order.id) }}">返回订单详情</a></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
