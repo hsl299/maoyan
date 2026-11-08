@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}首页 - 仿猫眼票务{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="filter-bar">
+    <a class="tag {{ 'active' if ttype is none else '' }}" href="{{ url_for('user.index', kw=kw) }}">全部</a>
+    <a class="tag {{ 'active' if ttype == 0 else '' }}" href="{{ url_for('user.index', type=0, kw=kw) }}">电影</a>
+    <a class="tag {{ 'active' if ttype == 1 else '' }}" href="{{ url_for('user.index', type=1, kw=kw) }}">演出</a>
+    {% if kw %}<span style="color:#888;font-size:13px;">搜索：<b>{{ kw }}</b> 的{{ '电影' if ttype==0 else ('演出' if ttype==1 else '全部') }}结果</span>{% endif %}
+  </div>
+
+  {% if tickets %}
+  <div class="ticket-grid">
+    {% for t in tickets %}
+    <a class="ticket-card" href="{{ url_for('user.ticket_detail', ticket_id=t.id) }}">
+      <div class="cover">
+        {% if t.cover %}
+        <img src="{{ t.cover if t.cover.startswith('http') else url_for('static', filename=t.cover) }}" alt="{{ t.title }}" style="width:100%;height:100%;object-fit:cover;">
+        {% else %}
+        <div class="title-bg">{{ t.title }}</div>
+        {% endif %}
+        <span class="badge {{ 'show' if t.type==1 else 'movie' }} cover-type">{{ '演出' if t.type==1 else '电影' }}</span>
+      </div>
+      <div class="info">
+        <div class="name">{{ t.title }}</div>
+        <div class="meta">{{ t.actors or '暂无主演信息' }}</div>
+        <div class="price">￥{{ '%.0f'|format(t.min_price or 0) }} 起 <small>共{{ t.session_count }}场</small></div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">暂无{{ '符合条件的' if kw or ttype is not none else '' }}票品</div>
+  {% endif %}
+</div>
+{% endblock %}
