@@ -293,3 +293,45 @@ def seat_update(sid):
         db.rollback()
         return jsonify(success=False, msg='操作失败')
     return jsonify(success=True)
+
+# ----------------------------------------------------------------------
+# 销售订单
+# ----------------------------------------------------------------------
+@merchant_bp.route('/orders')
+@merchant_required
+def orders():
+    mid = session['user_id']
+    status = request.args.get('status', type=int)
+    tid = request.args.get('tid', type=int)
+    kw = request.args.get('kw', '').strip()
+    sql = ('SELECT o.*, t.title, t.type, s.show_time, u.nickname, u.phone '
+           'FROM orders o JOIN sessions s ON o.session_id=s.id '
+           'JOIN tickets t ON s.ticket_id=t.id JOIN users u ON o.user_id=u.id '
+           'WHERE t.merchant_id=%s')
+    params = [mid]
+    if status is not None:
+        sql += ' AND o.status=%s'
+        params.append(status)
+    if tid:
+        sql += ' AND t.id=%s'
+        params.append(tid)
+    if kw:
+        sql += ' AND (u.nickname LIKE %s OR u.phone LIKE %s OR o.order_no LIKE %s)'
+        like = f'%{kw}%'
+        params += [like, like, like]
+    sql += ' ORDER BY o.created_at DESC'
+    orders = db.query(sql, params)
+    # 聚合每个订单的座位
+    order_seats = {}
+    if orders:
+        ids = [str(o['id']) for o in orders]
+        seat_rows = db.query(
+            'SELECT os.order_id, st.seat_row, st.seat_col FROM order_seats os '
+            'JOIN seats st ON os.seat_id=st.id WHERE os.order_id IN (%s)' % ','.join(['%s'] * len(ids)),
+            ids)
+        for sr in seat_rows:
+            order_seats.setdefault(sr['order_id'], []).append(sr)
+    tickets = db.query(
+        'SELECT id, title FROM tickets WHERE merchant_id=%s ORDER BY created_at DESC', (mid,))
+    return render_template('merchant/orders.html', orders=orders, tickets=tickets,
+                           cur_status=status, cur_tid=tid, kw=kw, order_seats=order_seats)
