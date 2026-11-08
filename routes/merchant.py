@@ -242,3 +242,54 @@ def session_toggle(sid):
     db.commit()
     flash('场次状态已切换', 'success')
     return redirect(url_for('merchant.session_manage', tid=s['ticket_id']))
+
+
+# ----------------------------------------------------------------------
+# 座位/票价管理
+# ----------------------------------------------------------------------
+@merchant_bp.route('/sessions/<int:sid>/seats')
+@merchant_required
+def seat_manage(sid):
+    s = db.query_one('SELECT * FROM sessions WHERE id=%s', (sid,))
+    if not s or not _get_own_ticket(s['ticket_id']):
+        flash('场次不存在', 'danger')
+        return redirect(url_for('merchant.dashboard'))
+    ticket = db.query_one('SELECT * FROM tickets WHERE id=%s', (s['ticket_id'],))
+    seats = db.query(
+        'SELECT * FROM seats WHERE session_id=%s ORDER BY seat_row, seat_col', (sid,))
+    cols = max((x['seat_col'] for x in seats), default=0)
+    return render_template('merchant/seat_manage.html', sess=s, ticket=ticket,
+                           seats=seats, cols=cols)
+
+
+@merchant_bp.route('/sessions/<int:sid>/seats/update', methods=['POST'])
+@merchant_required
+def seat_update(sid):
+    s = db.query_one('SELECT * FROM sessions WHERE id=%s', (sid,))
+    if not s or not _get_own_ticket(s['ticket_id']):
+        return jsonify(success=False, msg='场次不存在')
+
+    action = request.form.get('action')
+    try:
+        if action == 'price_row':      # 按行调价
+            row = request.form.get('seat_row', '').strip().upper()
+            price = request.form.get('price', type=float)
+            if not row or price is None:
+                return jsonify(success=False, msg='参数错误')
+            db.execute('UPDATE seats SET price=%s WHERE session_id=%s AND seat_row=%s AND status=0',
+                       (price, sid, row))
+        elif action == 'price_all':    # 全场统一定价
+            price = request.form.get('price', type=float)
+            if price is None:
+                return jsonify(success=False, msg='参数错误')
+            db.execute('UPDATE seats SET price=%s WHERE session_id=%s AND status=0',
+                       (price, sid))
+        elif action == 'reset':        # 重置本场所有座位为可售（清空锁/售）
+            db.execute('UPDATE seats SET status=0 WHERE session_id=%s', (sid,))
+        else:
+            return jsonify(success=False, msg='未知操作')
+        db.commit()
+    except Exception:
+        db.rollback()
+        return jsonify(success=False, msg='操作失败')
+    return jsonify(success=True)
