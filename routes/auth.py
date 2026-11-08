@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 import db
 
+
 auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
