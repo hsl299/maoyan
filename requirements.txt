@@ -1,0 +1,6 @@
+# 仿猫眼票务系统依赖
+Flask>=3.0
+PyMySQL>=1.1
+# 可选：如需展示真实二维码，安装 pip install qrcode pillow
+# qrcode>=7.0
+# pillow>=10.0
