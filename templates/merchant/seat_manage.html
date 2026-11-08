@@ -1,0 +1,47 @@
+{% extends 'merchant/base.html' %}
+{% block mcontent %}
+<div class="page-title"><span>座位 / 票价管理 · {{ ticket.title }}</span></div>
+
+<div class="toolbar">
+  <form method="post" action="{{ url_for('merchant.seat_update', sid=sess.id) }}" style="display:flex;gap:8px;align-items:center;">
+    <input type="hidden" name="action" value="price_row">
+    <span style="font-size:13px;color:#666;">按行调价：</span>
+    <input type="text" name="seat_row" placeholder="行号 A" style="width:70px;">
+    <input type="number" step="0.01" name="price" placeholder="新价格" style="width:110px;">
+    <button class="btn gray" type="submit">调价</button>
+  </form>
+  <form method="post" action="{{ url_for('merchant.seat_update', sid=sess.id) }}" style="display:flex;gap:8px;align-items:center;">
+    <input type="hidden" name="action" value="price_all">
+    <span style="font-size:13px;color:#666;">全场统一定价：</span>
+    <input type="number" step="0.01" name="price" placeholder="新价格" style="width:110px;">
+    <button class="btn gray" type="submit">设置</button>
+  </form>
+  <form method="post" action="{{ url_for('merchant.seat_update', sid=sess.id) }}" style="display:flex;gap:8px;" onsubmit="return confirm('将清空本场所有座位为可售状态，确定？')">
+    <input type="hidden" name="action" value="reset">
+    <button class="btn gray" type="submit">重置全部座位为可售</button>
+  </form>
+</div>
+
+<div class="seat-main" style="margin-bottom:20px;">
+  <div class="screen">银 幕 / 舞 台</div>
+  <div class="seat-grid">
+    {% for letter, row_seats in seats|groupby('seat_row') %}
+    <div class="seat-row">
+      <span class="row-label">{{ letter }}</span>
+      {% for seat in row_seats|sort(attribute='seat_col') %}
+      <div class="seat {{ 'sold' if seat.status==2 else ('locked' if seat.status==1 else '') }} legend"
+           title="￥{{ '%.2f'|format(seat.price) }}">
+        {% if seat.status != 0 %}{{ seat.seat_col }}{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="legend-bar">
+    <div class="lg"><span class="dot" style="background:#dfe4ea"></span>可售</div>
+    <div class="lg"><span class="dot" style="background:#f5d04e"></span>锁定</div>
+    <div class="lg"><span class="dot" style="background:#cfcfcf"></span>已售</div>
+    <div style="color:#999;">（悬停座位可查看价格）</div>
+  </div>
+</div>
+{% endblock %}
