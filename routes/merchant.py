@@ -161,3 +161,84 @@ def ticket_toggle(tid):
     db.commit()
     flash('已%s' % ('下架' if new_status == 0 else '上架'), 'success')
     return redirect(url_for('merchant.ticket_list'))
+
+
+# ----------------------------------------------------------------------
+# 场次管理
+# ----------------------------------------------------------------------
+@merchant_bp.route('/tickets/<int:tid>/sessions')
+@merchant_required
+def session_manage(tid):
+    ticket = _get_own_ticket(tid)
+    if not ticket:
+        flash('票品不存在', 'danger')
+        return redirect(url_for('merchant.ticket_list'))
+    sessions = db.query(
+        'SELECT s.*, (SELECT COUNT(*) FROM seats WHERE session_id=s.id) AS seat_count, '
+        '(SELECT COUNT(*) FROM seats WHERE session_id=s.id AND status IN (1,2)) AS sold_count '
+        'FROM sessions s WHERE s.ticket_id=%s ORDER BY s.show_time', (tid,))
+    return render_template('merchant/session_manage.html', ticket=ticket, sessions=sessions)
+
+
+@merchant_bp.route('/tickets/<int:tid>/sessions/add', methods=['POST'])
+@merchant_required
+def session_add(tid):
+    if not _get_own_ticket(tid):
+        flash('票品不存在', 'danger')
+        return redirect(url_for('merchant.ticket_list'))
+
+    # 规范化时间：浏览器 datetime-local 可能提交 '2026-11-05T14:30' 或带秒，统一转标准格式
+    show_time = request.form.get('show_time', '').strip().replace('T', ' ')
+    try:
+        parsed = datetime.strptime(show_time, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        try:
+            parsed = datetime.strptime(show_time, '%Y-%m-%d %H:%M')
+            show_time = parsed.strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            flash('演出时间格式不正确，请重新选择', 'danger')
+            return redirect(url_for('merchant.session_manage', tid=tid))
+
+    base_price = request.form.get('base_price', type=float) or 0
+    rows = request.form.get('seat_rows', type=int) or 8
+    cols = request.form.get('seat_cols', type=int) or 10
+    # 座位行数受英文字母表限制（A-Z），列数给一个合理上限，避免生成失败/异常
+    if rows < 1 or rows > 26:
+        flash('座位行数需在 1~26 之间', 'danger')
+        return redirect(url_for('merchant.session_manage', tid=tid))
+    if cols < 1 or cols > 30:
+        flash('座位列数需在 1~30 之间', 'danger')
+        return redirect(url_for('merchant.session_manage', tid=tid))
+    try:
+        db.execute(
+            'INSERT INTO sessions (ticket_id, show_time, base_price, seat_rows, seat_cols) '
+            'VALUES (%s,%s,%s,%s,%s)', (tid, show_time, base_price, rows, cols))
+        sid = db.last_insert_id()
+        # 生成座位（前三排+30%，中排+15%）
+        import string as _s
+        for r in range(rows):
+            row_letter = _s.ascii_uppercase[r]
+            for c in range(1, cols + 1):
+                price = base_price * (1.30 if r < 3 else (1.15 if r < rows / 2 else 1.00))
+                db.execute(
+                    'INSERT INTO seats (session_id, seat_row, seat_col, price) VALUES (%s,%s,%s,%s)',
+                    (sid, row_letter, c, round(price, 2)))
+        db.commit()
+        flash('场次及座位添加成功', 'success')
+    except Exception:
+        db.rollback()
+        flash('添加场次失败，请重试', 'danger')
+    return redirect(url_for('merchant.session_manage', tid=tid))
+
+
+@merchant_bp.route('/sessions/<int:sid>/toggle', methods=['POST'])
+@merchant_required
+def session_toggle(sid):
+    s = db.query_one('SELECT * FROM sessions WHERE id=%s', (sid,))
+    if not s or not _get_own_ticket(s['ticket_id']):
+        flash('场次不存在', 'danger')
+        return redirect(url_for('merchant.dashboard'))
+    db.execute('UPDATE sessions SET status=%s WHERE id=%s', (0 if s['status'] == 1 else 1, sid))
+    db.commit()
+    flash('场次状态已切换', 'success')
+    return redirect(url_for('merchant.session_manage', tid=s['ticket_id']))
