@@ -66,6 +66,21 @@ def index():
 
 
 # ----------------------------------------------------------------------
+# 票品详情
+# ----------------------------------------------------------------------
+@user_bp.route('/ticket/<int:ticket_id>')
+def ticket_detail(ticket_id):
+    ticket = db.query_one('SELECT * FROM tickets WHERE id=%s', (ticket_id,))
+    if not ticket or ticket['status'] == 0:
+        flash('票品不存在或已下架', 'danger')
+        return redirect(url_for('user.index'))
+    sessions = db.query(
+        'SELECT *, (SELECT COUNT(*) FROM seats WHERE session_id=sessions.id AND status=0) AS avail '
+        'FROM sessions WHERE ticket_id=%s AND status=1 ORDER BY show_time', (ticket_id,))
+    return render_template('ticket_detail.html', ticket=ticket, sessions=sessions)
+
+
+# ----------------------------------------------------------------------
 # 选座页
 # ----------------------------------------------------------------------
 @user_bp.route('/select_seat/<int:session_id>')
@@ -140,7 +155,92 @@ def lock_seats():
 
     return jsonify(success=True, order_id=order_id)
 
+# ----------------------------------------------------------------------
+# 订单确认页
+# ----------------------------------------------------------------------
+@user_bp.route('/order/<int:order_id>/confirm')
+@login_required
+def order_confirm(order_id):
+    release_timeout_orders()
+    order = _get_own_order(order_id)
+    if not order:
+        flash('订单不存在', 'danger')
+        return redirect(url_for('user.my_orders'))
+    if order['status'] != 0:
+        flash('订单状态已变化，无法继续支付', 'warning')
+        return redirect(url_for('user.my_orders'))
+    detail = _order_detail(order_id)
+    return render_template('order_confirm.html', order=detail)
 
+
+# ----------------------------------------------------------------------
+# 模拟支付（真实环境在此对接微信/支付宝支付渠道）
+# ----------------------------------------------------------------------
+@user_bp.route('/order/<int:order_id>/pay', methods=['POST'])
+@login_required
+def pay(order_id):
+    release_timeout_orders()
+    order = _get_own_order(order_id)
+    if not order:
+        return jsonify(success=False, msg='订单不存在')
+    if order['status'] != 0:
+        return jsonify(success=False, msg='订单状态已变化')
+
+    try:
+        # 生成订单级统一核销码（一个订单无论几张票，只用一个核销码），标记已支付
+        verify_code = gen_ticket_code()
+        db.execute('UPDATE orders SET status=1, paid_at=NOW(), verify_code=%s WHERE id=%s',
+                   (verify_code, order_id))
+        # 座位置为已售
+        db.execute(
+            'UPDATE seats SET status=2 WHERE id IN '
+            '(SELECT seat_id FROM order_seats WHERE order_id=%s)', (order_id,))
+        # 生成电子票记录（每座一条，用于记录座位核销状态；核销码统一在订单）
+        seat_rows = db.query(
+            'SELECT os.seat_id FROM order_seats os WHERE os.order_id=%s', (order_id,))
+        for sr in seat_rows:
+            db.execute('INSERT INTO e_tickets (order_id, seat_id) VALUES (%s,%s)',
+                       (order_id, sr['seat_id']))
+        db.commit()
+    except Exception:
+        db.rollback()
+        return jsonify(success=False, msg='支付失败，请重试')
+    return jsonify(success=True, order_id=order_id)
+
+
+# ----------------------------------------------------------------------
+# 我的订单
+# ----------------------------------------------------------------------
+@user_bp.route('/my_orders')
+@login_required
+def my_orders():
+    release_timeout_orders()
+    uid = session['user_id']
+    status = request.args.get('status', type=int)   # 筛选
+    sql = ('SELECT o.*, t.title, t.type, s.show_time '
+           'FROM orders o JOIN sessions s ON o.session_id=s.id '
+           'JOIN tickets t ON s.ticket_id=t.id WHERE o.user_id=%s')
+    params = [uid]
+    if status is not None:
+        sql += ' AND o.status=%s'
+        params.append(status)
+    sql += ' ORDER BY o.created_at DESC'
+    orders = db.query(sql, params)
+    return render_template('my_orders.html', orders=orders, cur=status)
+
+
+# ----------------------------------------------------------------------
+# 订单详情
+# ----------------------------------------------------------------------
+@user_bp.route('/order/<int:order_id>')
+@login_required
+def order_detail(order_id):
+    release_timeout_orders()
+    order = _get_own_order(order_id)
+    if not order:
+        flash('订单不存在', 'danger')
+        return redirect(url_for('user.my_orders'))
+    return render_template('order_detail.html', order=_order_detail(order_id))
 
 
 
