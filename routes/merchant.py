@@ -335,3 +335,52 @@ def orders():
         'SELECT id, title FROM tickets WHERE merchant_id=%s ORDER BY created_at DESC', (mid,))
     return render_template('merchant/orders.html', orders=orders, tickets=tickets,
                            cur_status=status, cur_tid=tid, kw=kw, order_seats=order_seats)
+
+
+# ----------------------------------------------------------------------
+# 退票审核
+# ----------------------------------------------------------------------
+@merchant_bp.route('/refunds')
+@merchant_required
+def refunds():
+    mid = session['user_id']
+    refunds = db.query(
+        'SELECT r.*, o.order_no, o.total_price, t.title, u.nickname, u.phone '
+        'FROM refunds r JOIN orders o ON r.order_id=o.id '
+        'JOIN sessions s ON o.session_id=s.id JOIN tickets t ON s.ticket_id=t.id '
+        'JOIN users u ON r.user_id=u.id WHERE t.merchant_id=%s ORDER BY r.created_at DESC',
+        (mid,))
+    return render_template('merchant/refunds.html', refunds=refunds)
+
+
+@merchant_bp.route('/refunds/<int:rid>/handle', methods=['POST'])
+@merchant_required
+def refund_handle(rid):
+    refund = db.query_one('SELECT * FROM refunds WHERE id=%s', (rid,))
+    if not refund or refund['status'] != 0:
+        flash('退票申请不存在或已处理', 'warning')
+        return redirect(url_for('merchant.refunds'))
+    order = db.query_one('SELECT * FROM orders WHERE id=%s', (refund['order_id'],))
+    if not order:
+        flash('关联订单不存在', 'danger')
+        return redirect(url_for('merchant.refunds'))
+    action = request.form.get('action')
+    reply = request.form.get('reply', '').strip()
+    try:
+        if action == 'approve':    # 审核通过：退款 + 回收座位 + 订单已退票 + 票券作废
+            db.execute('UPDATE refunds SET status=1, reply=%s, handled_at=NOW() WHERE id=%s',
+                       (reply, rid))
+            db.execute('UPDATE orders SET status=3 WHERE id=%s', (order['id'],))
+            db.execute(
+                'UPDATE seats SET status=0 WHERE id IN '
+                '(SELECT seat_id FROM order_seats WHERE order_id=%s)', (order['id'],))
+        else:                       # 不通过：恢复订单为已支付
+            db.execute('UPDATE refunds SET status=2, reply=%s, handled_at=NOW() WHERE id=%s',
+                       (reply, rid))
+            db.execute('UPDATE orders SET status=1 WHERE id=%s', (order['id'],))
+        db.commit()
+        flash('退票申请已处理', 'success')
+    except Exception:
+        db.rollback()
+        flash('处理失败', 'danger')
+    return redirect(url_for('merchant.refunds'))
