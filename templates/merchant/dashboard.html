@@ -1,0 +1,33 @@
+{% extends 'merchant/base.html' %}
+{% block mcontent %}
+<div class="page-title">数据概览</div>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="num">{{ stats.ticket_count }}</div><div class="lab">票品总数（{{ stats.on_count }} 个在售）</div></div>
+  <div class="stat-card"><div class="num">{{ stats.order_count }}</div><div class="lab">有效订单数</div></div>
+  <div class="stat-card"><div class="num">￥{{ '%.0f'|format(stats.sales) }}</div><div class="lab">累计销售额</div></div>
+  <div class="stat-card"><div class="num">{{ stats.refund_count }}</div><div class="lab">待处理退票</div></div>
+</div>
+
+<div class="section-title">最近订单</div>
+{% if recent %}
+<table class="table">
+  <thead><tr><th>订单号</th><th>票品</th><th>场次</th><th>用户</th><th>金额</th><th>状态</th><th>下单时间</th></tr></thead>
+  <tbody>
+    {% for o in recent %}
+    <tr>
+      <td>{{ o.order_no }}</td>
+      <td>{{ o.title }}</td>
+      <td>{{ o.show_time.strftime('%m-%d %H:%M') }}</td>
+      <td>{{ o.nickname }}</td>
+      <td>￥{{ '%.2f'|format(o.total_price) }}</td>
+      <td><span class="st-badge st-{{ o.status }}">{{ {0:'待支付',1:'已支付',2:'已完成',3:'已退票',4:'已取消',5:'退票审核中',6:'已核销'}[o.status] }}</span></td>
+      <td>{{ o.created_at.strftime('%m-%d %H:%M') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">暂无订单</div>
+{% endif %}
+{% endblock %}

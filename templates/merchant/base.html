@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}商家后台 - 仿猫眼票务{% endblock %}
+{% block content %}
+<div class="merchant-wrap">
+  <aside class="m-sidebar">
+    <a class="mi {{ 'active' if request.endpoint=='merchant.dashboard' else '' }}" href="{{ url_for('merchant.dashboard') }}">数据概览</a>
+    <a class="mi {{ 'active' if request.endpoint in ('merchant.ticket_list','merchant.ticket_new','merchant.ticket_edit','merchant.session_manage','merchant.seat_manage') else '' }}" href="{{ url_for('merchant.ticket_list') }}">票品管理</a>
+    <a class="mi {{ 'active' if request.endpoint=='merchant.orders' else '' }}" href="{{ url_for('merchant.orders') }}">销售订单</a>
+    <a class="mi {{ 'active' if request.endpoint=='merchant.refunds' else '' }}" href="{{ url_for('merchant.refunds') }}">退票审核</a>
+    <a class="mi {{ 'active' if request.endpoint=='merchant.verify' else '' }}" href="{{ url_for('merchant.verify') }}">票券核销</a>
+  </aside>
+  <div class="m-content">
+    {% block mcontent %}{% endblock %}
+  </div>
+</div>
+{% endblock %}
