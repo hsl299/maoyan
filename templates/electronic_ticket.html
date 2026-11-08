@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}电子票券 - 仿猫眼票务{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-title"><span>电子票券</span></div>
+  <div class="e-ticket">
+    <div class="head">
+      <h2>{{ order.title }}</h2>
+      <div style="font-size:13px;opacity:.9;">{{ order.show_time.strftime('%Y-%m-%d %H:%M') }} · {{ order.address }}</div>
+    </div>
+    <div class="body">
+      <div class="code-box">
+        <div class="code">{{ order.verify_code }}</div>
+        <div class="hint">{{ '已核销' if order.status == 6 else '请向检票人员出示此核销码' }}</div>
+        {% if order.status == 6 and order.verify_time %}
+        <div class="hint">核销时间：{{ order.verify_time.strftime('%Y-%m-%d %H:%M') }}</div>
+        {% endif %}
+      </div>
+      <div class="rows">
+        <div class="r"><span>订单号</span><span>{{ order.order_no }}</span></div>
+        <div class="r"><span>座位（共 {{ order.seats|length }} 张）</span>
+          <span>{% for s in order.seats %}{{ s.seat_row }}{{ s.seat_col }}{% if not loop.last %} {% endif %}{% endfor %}</span>
+        </div>
+        <div class="r"><span>支付金额</span><span>￥{{ '%.2f'|format(order.total_price) }}</span></div>
+        <div class="r"><span>订单状态</span>
+          <span>{{ {0:'待支付',1:'已支付',2:'已完成',3:'已退票',4:'已取消',5:'退票审核中',6:'已核销'}[order.status] }}</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:18px;font-size:13px;color:#999;">一个订单共用一个核销码，核销时整单一次性检票</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:20px;">
+    <a class="btn gray" href="{{ url_for('user.order_detail', order_id=order.id) }}">返回订单详情</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}{{ ticket.title }} - 仿猫眼票务{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="detail-wrap">
+    <div class="detail-poster">
+      {% if ticket.cover %}
+      <img src="{{ ticket.cover if ticket.cover.startswith('http') else url_for('static', filename=ticket.cover) }}" alt="{{ ticket.title }}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">
+      {% else %}
+      <div class="big">{{ ticket.title }}</div>
+      {% endif %}
+    </div>
+    <div class="detail-info">
+      <h1>{{ ticket.title }} <span class="badge {{ 'show' if ticket.type==1 else 'movie' }}">{{ '演出' if ticket.type==1 else '电影' }}</span></h1>
+      <div class="row"><b>{{ '主演' if ticket.type==0 else '嘉宾' }}：</b>{{ ticket.actors or '待定' }}</div>
+      <div class="row"><b>时长：</b>{{ ticket.duration }} 分钟</div>
+      <div class="row"><b>地点：</b>{{ ticket.address or '待定' }}</div>
+      <div class="row"><b>简介：</b>{{ ticket.intro or '暂无简介' }}</div>
+    </div>
+  </div>
+
+  <div class="section-title">选择场次</div>
+  {% if sessions %}
+  <div class="session-list">
+    {% for s in sessions %}
+    <a class="session-item" href="{{ url_for('user.seat_select', session_id=s.id) }}">
+      <div class="t">{{ s.show_time.strftime('%m月%d日 %H:%M') }}</div>
+      <div class="sub">基础票价 ￥{{ '%.0f'|format(s.base_price) }}</div>
+      <div class="p">￥{{ '%.0f'|format(s.base_price) }} <span style="color:#aaa;font-size:12px;font-weight:400;">起 · 余{{ s.avail }}座</span></div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">该票品暂无上架场次</div>
+  {% endif %}
+</div>
+{% endblock %}

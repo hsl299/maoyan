@@ -11,7 +11,6 @@ from utils.decorators import login_required
 from utils.helpers import gen_order_no, gen_ticket_code, order_is_timeout
 
 user_bp = Blueprint('user', __name__)
-
 # ----------------------------------------------------------------------
 # 辅助：取消超时待支付订单并释放座位
 # ----------------------------------------------------------------------
@@ -39,7 +38,6 @@ def release_timeout_orders():
         db.rollback()
         raise
     return len(timeout_ids)
-
 
 # ----------------------------------------------------------------------
 # 首页：浏览票品（支持分类筛选）
