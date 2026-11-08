@@ -1,0 +1,49 @@
+{% extends 'merchant/base.html' %}
+{% block mcontent %}
+<div class="page-title"><span>销售订单</span></div>
+
+<form class="toolbar" method="get">
+  <select name="status">
+    <option value="" {{ 'selected' if cur_status is none else '' }}>全部状态</option>
+    <option value="0" {{ 'selected' if cur_status==0 else '' }}>待支付</option>
+    <option value="1" {{ 'selected' if cur_status==1 else '' }}>已支付</option>
+    <option value="2" {{ 'selected' if cur_status==2 else '' }}>已完成</option>
+    <option value="6" {{ 'selected' if cur_status==6 else '' }}>已核销</option>
+    <option value="5" {{ 'selected' if cur_status==5 else '' }}>退票审核中</option>
+    <option value="3" {{ 'selected' if cur_status==3 else '' }}>已退票</option>
+  </select>
+  <select name="tid">
+    <option value="" {{ 'selected' if cur_tid is none else '' }}>全部票品</option>
+    {% for t in tickets %}
+    <option value="{{ t.id }}" {{ 'selected' if cur_tid==t.id else '' }}>{{ t.title }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="kw" placeholder="用户名/手机/订单号" value="{{ kw }}" style="width:200px;">
+  <button class="btn gray" type="submit">筛选</button>
+</form>
+
+{% if orders %}
+<table class="table">
+  <thead><tr><th>订单号</th><th>票品</th><th>场次</th><th>用户</th><th>座位</th><th>金额</th><th>状态</th><th>下单时间</th></tr></thead>
+  <tbody>
+    {% for o in orders %}
+    <tr>
+      <td>{{ o.order_no }}</td>
+      <td>{{ o.title }}</td>
+      <td>{{ o.show_time.strftime('%m-%d %H:%M') }}</td>
+      <td>{{ o.nickname }}<div style="color:#999;font-size:12px;">{{ o.phone }}</div></td>
+      <td>
+        {% set os = order_seats.get(o.id, []) %}
+        {% for s in os %}{{ s.seat_row }}{{ s.seat_col }}{% if not loop.last %} {% endif %}{% endfor %}
+      </td>
+      <td>￥{{ '%.2f'|format(o.total_price) }}</td>
+      <td><span class="st-badge st-{{ o.status }}">{{ {0:'待支付',1:'已支付',2:'已完成',3:'已退票',4:'已取消',5:'退票审核中',6:'已核销'}[o.status] }}</span></td>
+      <td>{{ o.created_at.strftime('%m-%d %H:%M') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">暂无订单</div>
+{% endif %}
+{% endblock %}
