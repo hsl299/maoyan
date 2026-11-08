@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}我的订单 - 仿猫眼票务{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-title"><span>我的订单</span></div>
+  <div class="filter-bar">
+    <a class="tag {{ 'active' if cur is none else '' }}" href="{{ url_for('user.my_orders') }}">全部</a>
+    <a class="tag {{ 'active' if cur == 0 else '' }}" href="{{ url_for('user.my_orders', status=0) }}">待支付</a>
+    <a class="tag {{ 'active' if cur == 1 else '' }}" href="{{ url_for('user.my_orders', status=1) }}">已支付</a>
+    <a class="tag {{ 'active' if cur == 2 else '' }}" href="{{ url_for('user.my_orders', status=2) }}">已完成</a>
+    <a class="tag {{ 'active' if cur == 6 else '' }}" href="{{ url_for('user.my_orders', status=6) }}">已核销</a>
+    <a class="tag {{ 'active' if cur == 5 else '' }}" href="{{ url_for('user.my_orders', status=5) }}">退票中</a>
+    <a class="tag {{ 'active' if cur == 3 else '' }}" href="{{ url_for('user.my_orders', status=3) }}">已退票</a>
+  </div>
+
+  {% if orders %}
+  <div class="order-list">
+    {% for o in orders %}
+    <div class="item">
+      <div class="thumb">{{ o.title }}</div>
+      <div class="body">
+        <div class="t">{{ o.title }}</div>
+        <div class="m">场次：{{ o.show_time.strftime('%Y-%m-%d %H:%M') }} · 订单号：{{ o.order_no }}</div>
+        <div class="m">下单时间：{{ o.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+      </div>
+      <div class="amount">
+        <div class="price">￥{{ '%.2f'|format(o.total_price) }}</div>
+        <div class="st-badge st-{{ o.status }}">
+          {{ {0:'待支付',1:'已支付',2:'已完成',3:'已退票',4:'已取消',5:'退票审核中',6:'已核销'}[o.status] }}
+        </div>
+        <div style="margin-top:8px;">
+          <a class="btn outline" style="padding:5px 14px;font-size:12px;" href="{{ url_for('user.order_detail', order_id=o.id) }}">详情</a>
+          {% if o.status == 0 %}
+          <a class="btn" style="padding:5px 14px;font-size:12px;" href="{{ url_for('user.order_confirm', order_id=o.id) }}">去支付</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">暂无订单</div>
+  {% endif %}
+</div>
+{% endblock %}
