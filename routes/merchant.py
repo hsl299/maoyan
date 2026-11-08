@@ -146,3 +146,18 @@ def ticket_edit(tid):
         return redirect(url_for('merchant.ticket_list'))
     return render_template('merchant/ticket_edit.html', ticket=ticket)
 
+# ----------------------------------------------------------------------
+# 上架 / 下架
+# ----------------------------------------------------------------------
+@merchant_bp.route('/tickets/<int:tid>/toggle', methods=['POST'])
+@merchant_required
+def ticket_toggle(tid):
+    ticket = _get_own_ticket(tid)
+    if not ticket:
+        flash('票品不存在', 'danger')
+        return redirect(url_for('merchant.ticket_list'))
+    new_status = 0 if ticket['status'] == 1 else 1
+    db.execute('UPDATE tickets SET status=%s WHERE id=%s', (new_status, tid))
+    db.commit()
+    flash('已%s' % ('下架' if new_status == 0 else '上架'), 'success')
+    return redirect(url_for('merchant.ticket_list'))
