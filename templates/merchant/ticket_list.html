@@ -1,0 +1,39 @@
+{% extends 'merchant/base.html' %}
+{% block mcontent %}
+<div class="page-title">
+  <span>票品管理</span>
+  <a class="btn" href="{{ url_for('merchant.ticket_new') }}">+ 新增票品</a>
+</div>
+
+<form class="toolbar" method="get">
+  <input type="text" name="kw" placeholder="搜索票品名称" value="{{ kw }}" style="width:220px;">
+  <button class="btn gray" type="submit">搜索</button>
+</form>
+
+{% if tickets %}
+<table class="table">
+  <thead><tr><th>ID</th><th>票品名称</th><th>类型</th><th>场次</th><th>已售</th><th>状态</th><th style="width:260px;">操作</th></tr></thead>
+  <tbody>
+    {% for t in tickets %}
+    <tr>
+      <td>{{ t.id }}</td>
+      <td>{{ t.title }}</td>
+      <td><span class="badge {{ 'show' if t.type==1 else 'movie' }}">{{ '演出' if t.type==1 else '电影' }}</span></td>
+      <td>{{ t.session_count }}</td>
+      <td>{{ t.sold_count }}</td>
+      <td><span class="st-badge {{ 'st-1' if t.status==1 else 'st-4' }}">{{ '在售' if t.status==1 else '已下架' }}</span></td>
+      <td>
+        <a class="btn outline" style="padding:4px 12px;font-size:12px;" href="{{ url_for('merchant.session_manage', tid=t.id) }}">场次</a>
+        <a class="btn outline" style="padding:4px 12px;font-size:12px;" href="{{ url_for('merchant.ticket_edit', tid=t.id) }}">编辑</a>
+        <form method="post" action="{{ url_for('merchant.ticket_toggle', tid=t.id) }}" style="display:inline;">
+          <button class="btn gray" style="padding:4px 12px;font-size:12px;" type="submit">{{ '下架' if t.status==1 else '上架' }}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">还没有票品，点击右上角"新增票品"开始创建</div>
+{% endif %}
+{% endblock %}
